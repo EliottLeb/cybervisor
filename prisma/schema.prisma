@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Cve {
+  id           Int      @id @default(autoincrement())
+  cveId        String   @unique
+  description  String
+  cvssScore    Float?
+  severity     String?  // LOW, MEDIUM, HIGH, CRITICAL
+  publishedAt  DateTime
+  updatedAt    DateTime @updatedAt
+  source       String   @default("NVD")
+  notableScore Int      @default(0)
+  createdAt    DateTime @default(now())
+}
+
+model Source {
+  id            Int       @id @default(autoincrement())
+  name          String
+  url           String    @unique
+  type          String    // RSS, API
+  language      String    @default("fr") // fr, en
+  lastFetchedAt DateTime?
+  articles      Article[]
+  createdAt     DateTime  @default(now())
+}
+
+model Article {
+  id           Int      @id @default(autoincrement())
+  title        String
+  link         String   @unique
+  summary      String?
+  content      String?
+  publishedAt  DateTime
+  notableScore Int      @default(0)
+  sourceId     Int
+  source       Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+}
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  endpoint  String   @unique
+  auth      String
+  p256dh    String
+  createdAt DateTime @default(now())
+}
