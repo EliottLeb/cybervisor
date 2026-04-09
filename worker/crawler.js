@@ -1,6 +1,7 @@
 const Parser = require('rss-parser');
 const axios = require('axios');
 const { PrismaClient } = require('@prisma/client');
+const http = require('http'); // Serveur HTTP natif ajouté pour le bouton Sync
 const parser = new Parser({ timeout: 20000 });
 const prisma = new PrismaClient();
 
@@ -223,14 +224,53 @@ async function cleanDatabase() {
     }
 }
 
+let isSyncing = false;
+
 async function main() {
+    if (isSyncing) {
+        console.log("Sync already in progress...");
+        return;
+    }
+    isSyncing = true;
     console.log("Starting CyberVisor Crawler...");
-    await fetchCirclCves();
-    await fetchCisaKevCves();
-    await fetchRssFeeds();
-    await cleanDatabase();
-    console.log("Crawler run finished. Waiting 5 minutes...");
+    try {
+        await fetchCirclCves();
+        await fetchCisaKevCves();
+        await fetchRssFeeds();
+        await cleanDatabase();
+        console.log("Crawler run finished. Waiting for next cycle...");
+    } catch (e) {
+        console.error("Critical crawler error:", e);
+    } finally {
+        isSyncing = false;
+    }
 }
+
+// Serveur HTTP ultra-léger pour lancer la capture en direct (via un clic utilisateur)
+const server = http.createServer(async (req, res) => {
+    if (req.url === '/force-sync' && req.method === 'POST') {
+        if (isSyncing) {
+            res.writeHead(409, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: "Already syncing" }));
+            return;
+        }
+        try {
+            await main();
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: "completed" }));
+        } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err.message }));
+        }
+    } else {
+        res.writeHead(404);
+        res.end();
+    }
+});
+
+server.listen(4000, () => {
+    console.log("Crawler HTTP API listening on port 4000");
+});
 
 main(); // Execute once immediately
 setInterval(main, 5 * 60 * 1000); // And then every 5 minutes
