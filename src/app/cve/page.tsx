@@ -7,12 +7,25 @@ const prisma = new PrismaClient();
 export const dynamic = 'force-dynamic';
 
 export default async function CvePage() {
-  const cves = await prisma.cve.findMany({
-    orderBy: {
-      publishedAt: 'desc',
-    },
-    take: 100, // Les 100 dernières failles exploitées
-  });
+  const allCves = await prisma.cve.findMany();
+  
+  // Tri intelligent par l'identifiant (Année puis Séquence) pour faire remonter les plus récentes (2024+, etc)
+  const cves = allCves.sort((a, b) => {
+    const matchA = a.cveId.match(/CVE-(\d{4})-(\d+)/);
+    const matchB = b.cveId.match(/CVE-(\d{4})-(\d+)/);
+    
+    if (matchA && matchB) {
+       const yearA = parseInt(matchA[1], 10);
+       const yearB = parseInt(matchB[1], 10);
+       if (yearA !== yearB) return yearB - yearA; // Tri par année décroissante
+       
+       const seqA = parseInt(matchA[2], 10);
+       const seqB = parseInt(matchB[2], 10);
+       return seqB - seqA; // Si même année, tri par n° de séquence décroissant
+    }
+    // Fallback sécurité si non formaté en CVE
+    return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+  }).slice(0, 100);
 
   return (
     <div className="p-4 md:p-8">
