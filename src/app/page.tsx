@@ -17,6 +17,10 @@ export default async function Home() {
     where: { publishedAt: { gte: today }, notableScore: { gte: 30 } }
   });
 
+  const recentCves = await prisma.cve.count({
+    where: { publishedAt: { gte: today } }
+  });
+
   const latestStats = await prisma.article.findMany({
     where: { publishedAt: { gte: today } },
     select: { publishedAt: true, source: { select: { name: true } } }
@@ -57,10 +61,21 @@ export default async function Home() {
           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
           <div className="flex justify-between items-start relative z-10">
             <div>
-              <p className="text-slate-400 text-sm">Nouveaux Items</p>
+              <p className="text-slate-400 text-sm">Nouveaux Articles</p>
               <h3 className="text-4xl font-bold text-white mt-2">{newArticlesCount}</h3>
             </div>
             <div className="p-3 bg-blue-500/10 text-blue-400 rounded-lg"><FileText size={24}/></div>
+          </div>
+        </div>
+
+        <div className="bg-slate-900 border border-emerald-500/20 p-6 rounded-xl shadow-lg ring-1 ring-white/5 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
+          <div className="flex justify-between items-start relative z-10">
+            <div>
+              <p className="text-slate-400 text-sm">CVE CISA Détectées Aujourd'hui</p>
+              <h3 className="text-4xl font-bold text-emerald-400 mt-2">{recentCves}</h3>
+            </div>
+            <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg"><ShieldAlert size={24}/></div>
           </div>
         </div>
 

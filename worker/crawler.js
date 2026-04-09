@@ -79,9 +79,45 @@ async function fetchRssFeeds() {
     }
 }
 
+async function fetchCisaKevCves() {
+    console.log("Fetching CISA KEV Catalog (Exploited Vulnerabilities)...");
+    try {
+        const response = await axios.get("https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json");
+        const vulnerabilities = response.data.vulnerabilities || [];
+        
+        let newCves = 0;
+        const recentVulns = vulnerabilities.slice(-200); // 200 dernières
+        
+        for (const vuln of recentVulns) {
+            const dbCve = await prisma.cve.findUnique({
+                where: { cveId: vuln.cveID }
+            });
+
+            if (!dbCve) {
+                const pubDate = new Date(vuln.dateAdded);
+                await prisma.cve.create({
+                    data: {
+                        cveId: vuln.cveID,
+                        description: `[${vuln.vendorProject} - ${vuln.product}] ${vuln.vulnerabilityName} : ${vuln.shortDescription}`,
+                        cvssScore: 10.0, // Failles activement exploitées
+                        severity: "CRITICAL",
+                        publishedAt: pubDate,
+                        source: "CISA KEV"
+                    }
+                });
+                newCves++;
+            }
+        }
+        console.log(`[CISA KEV] Added ${newCves} new critical CVEs.`);
+    } catch (error) {
+        console.error("Error fetching CISA KEV:", error.message);
+    }
+}
+
 async function main() {
     console.log("Starting CyberVisor Crawler...");
     await fetchRssFeeds();
+    await fetchCisaKevCves();
     console.log("Crawler run finished. Waiting 5 minutes...");
 }
 

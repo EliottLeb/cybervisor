@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Link from 'next/link';
-import { LayoutDashboard, Radio } from 'lucide-react';
+import { LayoutDashboard, Radio, ShieldAlert } from 'lucide-react';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -31,6 +31,7 @@ export default function RootLayout({
           <nav className="flex space-x-5 mr-2">
             <Link href="/" className="text-slate-400 hover:text-white transition-colors" aria-label="Dashboard"><LayoutDashboard size={24} /></Link>
             <Link href="/flux" className="text-slate-400 hover:text-white transition-colors" aria-label="Flux"><Radio size={24} /></Link>
+            <Link href="/cve" className="text-rose-400 hover:text-rose-300 transition-colors" aria-label="CVE KEV"><ShieldAlert size={24} /></Link>
           </nav>
         </header>
 
@@ -50,7 +51,11 @@ export default function RootLayout({
             </Link>
             <Link href="/flux" className="flex items-center space-x-3 px-3 py-3 rounded-lg hover:bg-slate-800/80 text-slate-300 hover:text-white transition-colors">
               <Radio size={20} />
-              <span className="font-medium">Flux & CVEs</span>
+              <span className="font-medium">Flux d'Actus</span>
+            </Link>
+            <Link href="/cve" className="flex items-center space-x-3 px-3 py-3 rounded-lg hover:bg-slate-800/80 text-rose-400 hover:text-rose-300 transition-colors border border-transparent hover:border-rose-500/30 bg-rose-500/5">
+              <ShieldAlert size={20} />
+              <span className="font-bold">Base CVE (KEV)</span>
             </Link>
           </nav>
         </aside>
