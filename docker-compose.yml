@@ -1,12 +1,23 @@
 version: '3.8'
 
 services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
   web:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "80:3000"
     environment:
       - NODE_ENV=production
       - HOSTNAME=0.0.0.0
@@ -28,3 +39,5 @@ services:
 
 volumes:
   sqlite_data:
+  caddy_data:
+  caddy_config:
