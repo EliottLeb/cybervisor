@@ -1,14 +1,39 @@
 const Parser = require('rss-parser');
 const axios = require('axios');
 const { PrismaClient } = require('@prisma/client');
-const parser = new Parser();
+const parser = new Parser({ timeout: 20000 });
 const prisma = new PrismaClient();
 
 const RSS_FEEDS = [
-    { name: 'CERT-FR', url: 'https://www.cert.ssi.gouv.fr/alerte/feed/', type: 'RSS', lang: 'fr' },
+    // US & Global Threat Intel
     { name: 'BleepingComputer', url: 'https://www.bleepingcomputer.com/feed/', type: 'RSS', lang: 'en' },
     { name: 'The Hacker News', url: 'https://feeds.feedburner.com/TheHackersNews', type: 'RSS', lang: 'en' },
-    { name: 'ANSSI', url: 'https://www.ssi.gouv.fr/feed/', type: 'RSS', lang: 'fr' }
+    { name: 'Security Affairs', url: 'https://securityaffairs.com/feed', type: 'RSS', lang: 'en' },
+    { name: 'Dark Reading', url: 'https://www.darkreading.com/rss.xml', type: 'RSS', lang: 'en' },
+    { name: 'The Record', url: 'https://therecord.media/feed', type: 'RSS', lang: 'en' },
+    { name: 'CyberScoop', url: 'https://cyberscoop.com/feed/', type: 'RSS', lang: 'en' },
+    { name: 'Krebs On Security', url: 'https://krebsonsecurity.com/feed/', type: 'RSS', lang: 'en' },
+    { name: 'SANS ISC', url: 'https://isc.sans.edu/rssfeed.xml', type: 'RSS', lang: 'en' },
+    { name: 'Help Net Security', url: 'https://www.helpnetsecurity.com/feed/', type: 'RSS', lang: 'en' },
+    { name: 'Talos Intelligence', url: 'https://blog.talosintelligence.com/rss/', type: 'RSS', lang: 'en' },
+    { name: 'ZDI', url: 'https://www.zerodayinitiative.com/rss/published/', type: 'RSS', lang: 'en' },
+    // French Media & CERTs
+    { name: 'CERT-FR Alerte', url: 'https://www.cert.ssi.gouv.fr/alerte/feed/', type: 'RSS', lang: 'fr' },
+    { name: 'CERT-FR Avis', url: 'https://www.cert.ssi.gouv.fr/avis/feed/', type: 'RSS', lang: 'fr' },
+    { name: 'IT-Connect', url: 'https://www.it-connect.fr/feed/', type: 'RSS', lang: 'fr' },
+    { name: 'Zataz', url: 'https://www.zataz.com/feed/', type: 'RSS', lang: 'fr' },
+    { name: 'Sekoia', url: 'https://blog.sekoia.io/feed/', type: 'RSS', lang: 'en' },
+    { name: 'Intrinsec', url: 'https://blog.intrinsec.com/feed/', type: 'RSS', lang: 'fr' },
+    // European & Government
+    { name: 'ENISA', url: 'https://www.enisa.europa.eu/rss.xml', type: 'RSS', lang: 'en' },
+    { name: 'CISA ICS', url: 'https://www.cisa.gov/cybersecurity-advisories/ics-advisories.xml', type: 'RSS', lang: 'en' },
+    // Vendor Specific
+    { name: 'Microsoft MSRC', url: 'https://api.msrc.microsoft.com/update-guide/rss', type: 'RSS', lang: 'en' },
+    { name: 'FortiGuard', url: 'https://www.fortiguard.com/rss/ir.xml', type: 'RSS', lang: 'en' },
+    { name: 'Ubuntu Security', url: 'https://ubuntu.com/security/notices/rss.xml', type: 'RSS', lang: 'en' },
+    { name: 'Trend Micro', url: 'https://www.trendmicro.com/vinfo/us/security/rss/news', type: 'RSS', lang: 'en' },
+    { name: 'Kaspersky Securelist', url: 'https://securelist.com/feed/', type: 'RSS', lang: 'en' },
+    { name: 'Schneier on Security', url: 'https://www.schneier.com/feed/atom/', type: 'RSS', lang: 'en' }
 ];
 
 function calculateNotableScore(title, content) {
@@ -114,10 +139,96 @@ async function fetchCisaKevCves() {
     }
 }
 
+async function fetchCirclCves() {
+    console.log("Fetching CIRCL.LU CVE API...");
+    try {
+        const response = await axios.get("https://cve.circl.lu/api/last/100", { timeout: 15000 });
+        const cves = Array.isArray(response.data) ? response.data : [];
+        
+        let newCves = 0;
+        
+        for (const vuln of cves) {
+            if (!vuln.id || !vuln.id.startsWith("CVE-")) continue;
+            
+            const dbCve = await prisma.cve.findUnique({
+                where: { cveId: vuln.id }
+            });
+
+            if (!dbCve) {
+                const pubDate = new Date(vuln.Published || new Date());
+                const cvss = typeof vuln.cvss === 'number' ? vuln.cvss : null;
+                const severity = cvss >= 9.0 ? "CRITICAL" : cvss >= 7.0 ? "HIGH" : cvss >= 4.0 ? "MEDIUM" : "LOW";
+                
+                await prisma.cve.create({
+                    data: {
+                        cveId: vuln.id,
+                        description: vuln.summary ? vuln.summary.slice(0, 500) : "Aucun résumé disponible",
+                        cvssScore: cvss,
+                        severity: severity,
+                        publishedAt: pubDate,
+                        source: "CIRCL.LU"
+                    }
+                });
+                newCves++;
+            }
+        }
+        console.log(`[CIRCL.LU] Added ${newCves} new standard CVEs.`);
+    } catch (error) {
+        console.error("Error fetching CIRCL CVEs:", error.message);
+    }
+}
+
+async function cleanDatabase() {
+    console.log("Cleaning database (duplicates and old records)...");
+    try {
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+        const deleteOldArticles = await prisma.article.deleteMany({
+            where: { publishedAt: { lt: ninetyDaysAgo } }
+        });
+
+        const deleteOldCves = await prisma.cve.deleteMany({
+            where: { publishedAt: { lt: ninetyDaysAgo } }
+        });
+
+        console.log(`[DB Cleaner] Deleted ${deleteOldArticles.count} old articles and ${deleteOldCves.count} old CVEs.`);
+
+        const duplicateTitles = await prisma.article.groupBy({
+            by: ['title'],
+            having: {
+                title: { _count: { gt: 1 } }
+            }
+        });
+
+        let dupesDeleted = 0;
+        for (const group of duplicateTitles) {
+            const articles = await prisma.article.findMany({
+                where: { title: group.title },
+                orderBy: { publishedAt: 'desc' }
+            });
+
+            const idsToDelete = articles.slice(1).map(a => a.id);
+            if (idsToDelete.length > 0) {
+                await prisma.article.deleteMany({
+                    where: { id: { in: idsToDelete } }
+                });
+                dupesDeleted += idsToDelete.length;
+            }
+        }
+        
+        console.log(`[DB Cleaner] Deleted ${dupesDeleted} duplicate articles based on exact title match.`);
+    } catch (error) {
+        console.error("Error during database cleaning:", error.message);
+    }
+}
+
 async function main() {
     console.log("Starting CyberVisor Crawler...");
-    await fetchRssFeeds();
+    await fetchCirclCves();
     await fetchCisaKevCves();
+    await fetchRssFeeds();
+    await cleanDatabase();
     console.log("Crawler run finished. Waiting 5 minutes...");
 }
 
