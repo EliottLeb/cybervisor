@@ -45,8 +45,8 @@ export default async function Home() {
   })).sort((a,b) => b.value - a.value).slice(0, 5);
 
   return (
-    <div className="p-8">
-      <header className="mb-8">
+    <div className="p-4 md:p-8 overflow-x-hidden">
+      <header className="mb-6 md:mb-8">
         <h2 className="text-3xl font-bold text-slate-50">Synthèse de la journée</h2>
         <p className="text-slate-400 mt-2">Activité depuis 00:00 (Mise à jour automatique)</p>
       </header>

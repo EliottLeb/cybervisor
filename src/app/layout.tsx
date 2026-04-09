@@ -18,31 +18,45 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className="dark">
-      <body className={`${inter.className} bg-slate-950 text-slate-50 flex h-screen overflow-hidden`}>
+      <body className={`${inter.className} bg-slate-950 text-slate-50 flex flex-col md:flex-row h-screen overflow-hidden`}>
         
-        {/* Sidebar */}
-        <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
+        {/* Mobile Header */}
+        <header className="md:hidden bg-slate-900 border-b border-slate-800 p-4 flex justify-between items-center z-50 sticky top-0">
+          <div>
+            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+              CyberVisor
+            </h1>
+            <p className="text-[10px] text-slate-400 mt-0.5">Live Security Feed</p>
+          </div>
+          <nav className="flex space-x-5 mr-2">
+            <Link href="/" className="text-slate-400 hover:text-white transition-colors" aria-label="Dashboard"><LayoutDashboard size={24} /></Link>
+            <Link href="/flux" className="text-slate-400 hover:text-white transition-colors" aria-label="Flux"><Radio size={24} /></Link>
+          </nav>
+        </header>
+
+        {/* Desktop Sidebar */}
+        <aside className="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-col">
           <div className="p-6">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
               CyberVisor
             </h1>
             <p className="text-xs text-slate-400 mt-1">Live Security Feed</p>
           </div>
           
           <nav className="flex-1 px-4 space-y-2 mt-4">
-            <Link href="/" className="flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors">
+            <Link href="/" className="flex items-center space-x-3 px-3 py-3 rounded-lg hover:bg-slate-800/80 text-slate-300 hover:text-white transition-colors">
               <LayoutDashboard size={20} />
-              <span>Dashboard</span>
+              <span className="font-medium">Dashboard</span>
             </Link>
-            <Link href="/flux" className="flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors">
+            <Link href="/flux" className="flex items-center space-x-3 px-3 py-3 rounded-lg hover:bg-slate-800/80 text-slate-300 hover:text-white transition-colors">
               <Radio size={20} />
-              <span>Flux & CVEs</span>
+              <span className="font-medium">Flux & CVEs</span>
             </Link>
           </nav>
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto pb-10">
           {children}
         </main>
       </body>

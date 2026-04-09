@@ -12,10 +12,10 @@ export default async function FluxPage() {
   });
 
   return (
-    <div className="p-8">
-      <header className="mb-8 flex justify-between items-center">
+    <div className="p-4 md:p-8">
+      <header className="mb-6 md:mb-8 flex flex-col md:flex-row md:justify-between md:items-center">
         <div>
-          <h2 className="text-3xl font-bold text-slate-50">Flux de Veille en continu</h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-50">Flux de Veille en continu</h2>
           <p className="text-slate-400 mt-2">Derniers articles et alertes CVE issus de vos sources sélectionnées</p>
         </div>
       </header>
@@ -26,20 +26,20 @@ export default async function FluxPage() {
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <div className="flex items-center space-x-3 mb-2">
-                  <span className="px-2.5 py-1 text-xs font-semibold bg-slate-950 border border-slate-800 text-slate-300 rounded-md">
+                  <span className="px-2 py-1 text-[10px] md:text-xs font-semibold bg-slate-950 border border-slate-800 text-slate-300 rounded-md">
                     {article.source.name}
                   </span>
-                  <span className="text-xs text-slate-500">
-                    {format(new Date(article.publishedAt), 'dd MMM yyyy à HH:mm', { locale: fr })}
+                  <span className="text-[10px] md:text-xs text-slate-500">
+                    {format(new Date(article.publishedAt), 'dd MMM yyyy HH:mm', { locale: fr })}
                   </span>
                   {article.notableScore >= 30 && (
-                    <span className="px-2.5 py-1 text-xs font-bold bg-rose-500/20 text-rose-400 rounded-md flex items-center border border-rose-500/30">
+                    <span className="px-2 py-1 text-[10px] md:text-xs font-bold bg-rose-500/20 text-rose-400 rounded-md flex items-center border border-rose-500/30">
                       ⚠️ Critique / Majeur
                     </span>
                   )}
                 </div>
-                <h3 className="text-lg font-medium text-slate-100 mb-2 leading-snug group-hover:text-emerald-400 transition-colors">{article.title}</h3>
-                <p className="text-sm text-slate-400 line-clamp-2 w-full md:w-3/4">{article.summary || "Aucun résumé disponible."}</p>
+                <h3 className="text-base md:text-lg font-medium text-slate-100 mb-2 leading-snug group-hover:text-emerald-400 transition-colors">{article.title}</h3>
+                <p className="text-xs md:text-sm text-slate-400 line-clamp-3 md:line-clamp-2 w-full md:w-5/6">{article.summary || "Aucun résumé disponible."}</p>
               </div>
             </div>
           </a>
