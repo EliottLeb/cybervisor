@@ -1,12 +1,13 @@
 "use client";
 
+import { memo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
-export function DashboardCharts({ hourlyData, sourceData }: { hourlyData: any[], sourceData: any[] }) {
+function DashboardChartsInner({ hourlyData, sourceData }: { hourlyData: any[], sourceData: any[] }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-lg">
-          <h3 className="text-lg font-medium mb-6">Activité par heure (Aujourd'hui)</h3>
+          <h3 className="text-lg font-medium mb-6">Activité par heure (Aujourd&apos;hui)</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={hourlyData}>
@@ -42,3 +43,6 @@ export function DashboardCharts({ hourlyData, sourceData }: { hourlyData: any[],
       </div>
   );
 }
+
+// Memo to prevent re-renders when parent re-renders with same data
+export const DashboardCharts = memo(DashboardChartsInner);

@@ -18,6 +18,9 @@ model Cve {
   source       String   @default("NVD")
   notableScore Int      @default(0)
   createdAt    DateTime @default(now())
+
+  // ⚡ Index for sorting by publishedAt (used on CVE page ORDER BY)
+  @@index([publishedAt])
 }
 
 model Source {
@@ -42,6 +45,13 @@ model Article {
   sourceId     Int
   source       Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
+
+  // ⚡ Index for dashboard date filter (WHERE publishedAt >= today)
+  @@index([publishedAt])
+  // ⚡ Composite index for high-risk articles query (WHERE publishedAt >= today AND notableScore >= 30)
+  @@index([publishedAt, notableScore])
+  // ⚡ Index for flux page (ORDER BY publishedAt DESC with source JOIN)
+  @@index([sourceId, publishedAt])
 }
 
 model PushSubscription {

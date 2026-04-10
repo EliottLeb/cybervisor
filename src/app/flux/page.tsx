@@ -2,13 +2,24 @@ import { prisma } from '@/lib/prisma';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-export const revalidate = 60; // 60s cache
+export const revalidate = 60; // 60s ISR cache
 
 export default async function FluxPage() {
+  // ⚡ Select only the fields we actually render — skip content, createdAt, etc.
   const articles = await prisma.article.findMany({
     orderBy: { publishedAt: 'desc' },
     take: 100,
-    include: { source: true }
+    select: {
+      id: true,
+      title: true,
+      link: true,
+      summary: true,
+      publishedAt: true,
+      notableScore: true,
+      source: {
+        select: { name: true }
+      }
+    }
   });
 
   return (

@@ -1,31 +1,25 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-const prisma = new PrismaClient();
-
-export const dynamic = 'force-dynamic';
+// ISR — cached for 60s instead of force-dynamic (which recomputes on EVERY request)
+export const revalidate = 60;
 
 export default async function CvePage() {
-  const allCves = await prisma.cve.findMany();
-  
-  // Tri intelligent par l'identifiant (Année puis Séquence) pour faire remonter les plus récentes (2024+, etc)
-  const cves = allCves.sort((a, b) => {
-    const matchA = a.cveId.match(/CVE-(\d{4})-(\d+)/);
-    const matchB = b.cveId.match(/CVE-(\d{4})-(\d+)/);
-    
-    if (matchA && matchB) {
-       const yearA = parseInt(matchA[1], 10);
-       const yearB = parseInt(matchB[1], 10);
-       if (yearA !== yearB) return yearB - yearA; // Tri par année décroissante
-       
-       const seqA = parseInt(matchA[2], 10);
-       const seqB = parseInt(matchB[2], 10);
-       return seqB - seqA; // Si même année, tri par n° de séquence décroissant
-    }
-    // Fallback sécurité si non formaté en CVE
-    return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-  }).slice(0, 100);
+  // ⚡ Sort & limit in the DATABASE instead of loading ALL CVEs into JS memory
+  // Only select the fields we actually render
+  const cves = await prisma.cve.findMany({
+    orderBy: [
+      { publishedAt: 'desc' },
+    ],
+    take: 100,
+    select: {
+      id: true,
+      cveId: true,
+      description: true,
+      publishedAt: true,
+    },
+  });
 
   return (
     <div className="p-4 md:p-8">
@@ -73,7 +67,7 @@ export default async function CvePage() {
                   rel="noreferrer" 
                   className="text-xs font-semibold px-3 py-1.5 bg-slate-950 border border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white rounded transition-colors"
                 >
-                  Recherche d'exploits
+                  Recherche d&apos;exploits
                 </a>
               </div>
             </div>

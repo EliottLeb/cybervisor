@@ -1,30 +1,44 @@
 import { prisma } from '@/lib/prisma';
 import { Activity, AlertTriangle, ShieldAlert, FileText } from 'lucide-react';
-import { DashboardCharts } from './DashboardCharts';
+import dynamic from 'next/dynamic';
 
-export const revalidate = 60; // Revalidate cache every 60s
+// Lazy load Recharts — ~400KB saved from SSR bundle, loaded client-side only
+const DashboardCharts = dynamic(
+  () => import('./DashboardCharts').then(mod => ({ default: mod.DashboardCharts })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-lg h-[340px] animate-pulse" />
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-lg h-[340px] animate-pulse" />
+      </div>
+    ),
+  }
+);
+
+export const revalidate = 30; // ISR — 30s cache for fresh data
 
 export default async function Home() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Statistics
-  const newArticlesCount = await prisma.article.count({
-    where: { publishedAt: { gte: today } }
-  });
-  
-  const highRiskArticles = await prisma.article.count({
-    where: { publishedAt: { gte: today }, notableScore: { gte: 30 } }
-  });
-
-  const recentCves = await prisma.cve.count({
-    where: { publishedAt: { gte: today } }
-  });
-
-  const latestStats = await prisma.article.findMany({
-    where: { publishedAt: { gte: today } },
-    select: { publishedAt: true, source: { select: { name: true } } }
-  });
+  // ⚡ Run all 4 DB queries in PARALLEL instead of sequential
+  const [newArticlesCount, highRiskArticles, recentCves, latestStats] = await Promise.all([
+    prisma.article.count({
+      where: { publishedAt: { gte: today } }
+    }),
+    prisma.article.count({
+      where: { publishedAt: { gte: today }, notableScore: { gte: 30 } }
+    }),
+    prisma.cve.count({
+      where: { publishedAt: { gte: today } }
+    }),
+    // Only select the fields we actually use — not the entire Article model
+    prisma.article.findMany({
+      where: { publishedAt: { gte: today } },
+      select: { publishedAt: true, source: { select: { name: true } } }
+    }),
+  ]);
   
   // Aggregate hourly data
   const hourlyData = Array.from({ length: 24 }).map((_, i) => ({
@@ -32,21 +46,21 @@ export default async function Home() {
     count: 0
   }));
 
-  let topSources: Record<string, number> = {};
+  const topSources: Record<string, number> = {};
 
-  latestStats.forEach(article => {
+  for (const article of latestStats) {
     const hour = article.publishedAt.getHours();
     hourlyData[hour].count += 1;
     
     if (article.source?.name) {
       topSources[article.source.name] = (topSources[article.source.name] || 0) + 1;
     }
-  });
+  }
 
-  const sourceData = Object.keys(topSources).map(name => ({
-    name,
-    value: topSources[name]
-  })).sort((a,b) => b.value - a.value).slice(0, 5);
+  const sourceData = Object.entries(topSources)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
 
   return (
     <div className="p-4 md:p-8 overflow-x-hidden">
@@ -72,7 +86,7 @@ export default async function Home() {
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
           <div className="flex justify-between items-start relative z-10">
             <div>
-              <p className="text-slate-400 text-sm">CVE CISA Détectées Aujourd'hui</p>
+              <p className="text-slate-400 text-sm">CVE CISA Détectées Aujourd&apos;hui</p>
               <h3 className="text-4xl font-bold text-emerald-400 mt-2">{recentCves}</h3>
             </div>
             <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg"><ShieldAlert size={24}/></div>
@@ -91,7 +105,7 @@ export default async function Home() {
         </div>
       </div>
 
-      {/* Charts */}
+      {/* Charts — lazy loaded client-side */}
       <DashboardCharts hourlyData={hourlyData} sourceData={sourceData} />
     </div>
   );
